@@ -661,6 +661,8 @@ int main(int argc, char * argv[])
 	atexit(&exit_handler);
 
 	process_options(argc, argv);
+	int runtime_no_tx = _cl_no_tx;
+	int runtime_no_rx = _cl_no_rx;
 
 	if (!_cl_port) {
 		fprintf(stderr, "ERROR: Port argument required\n");
@@ -724,13 +726,13 @@ int main(int argc, char * argv[])
 
 	struct pollfd serial_poll;
 	serial_poll.fd = _fd;
-	if (!_cl_no_rx) {
+	if (!runtime_no_rx) {
 		serial_poll.events |= POLLIN;
 	} else {
 		serial_poll.events &= ~POLLIN;
 	}
 
-	if (!_cl_no_tx) {
+	if (!runtime_no_tx) {
 		serial_poll.events |= POLLOUT;
 	} else {
 		serial_poll.events &= ~POLLOUT;
@@ -744,7 +746,7 @@ int main(int argc, char * argv[])
 	last_read = start_time;
 	last_write = start_time;
 
-	while (!(_cl_no_rx && _cl_no_tx)) {
+	while (!(runtime_no_rx && runtime_no_tx)) {
 		struct timespec current;
 		int retval = poll(&serial_poll, 1, 1000);
 
@@ -787,13 +789,13 @@ int main(int argc, char * argv[])
 			int rx_timeout, tx_timeout;
 
 			// Has it been over two seconds since we transmitted or received data?
-			rx_timeout = (!_cl_no_rx && diff_ms(&current, &last_read) > 2000);
-			tx_timeout = (!_cl_no_tx && diff_ms(&current, &last_write) > 2000);
+			rx_timeout = (!runtime_no_rx && diff_ms(&current, &last_read) > 2000);
+			tx_timeout = (!runtime_no_tx && diff_ms(&current, &last_write) > 2000);
 			// Special case - we don't want to warn about receive
 			// timeouts at the end of a loopback test (where we are
 			// no longer transmitting and the receive count equals
 			// the transmit count).
-			if (_cl_no_tx && _write_count != 0 && _write_count == _read_count) {
+			if (runtime_no_tx && _write_count != 0 && _write_count == _read_count) {
 				rx_timeout = 0;
 			}
 
@@ -825,7 +827,7 @@ int main(int argc, char * argv[])
 		if (_cl_tx_time) {
 			if (current.tv_sec - start_time.tv_sec >= _cl_tx_time) {
 				_cl_tx_time = 0;
-				_cl_no_tx = 1;
+				runtime_no_tx = 1;
 				serial_poll.events &= ~POLLOUT;
 				printf("Stopped transmitting.\n");
 			}
@@ -834,7 +836,7 @@ int main(int argc, char * argv[])
 		if (_cl_rx_time) {
 			if (current.tv_sec - start_time.tv_sec >= _cl_rx_time) {
 				_cl_rx_time = 0;
-				_cl_no_rx = 1;
+				runtime_no_rx = 1;
 				serial_poll.events &= ~POLLIN;
 				printf("Stopped receiving.\n");
 			}
