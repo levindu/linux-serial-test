@@ -646,6 +646,12 @@ static int diff_ms(const struct timespec *t1, const struct timespec *t2)
 static int compute_error_count(void)
 {
 	long long int result;
+
+	if ((_cl_no_rx == 0 && _read_count == 0) ||
+		(_cl_no_tx == 0 && _write_count == 0)) {
+		return 127;
+	}
+
 	if (_cl_no_rx == 1 || _cl_no_tx == 1)
 		result = _error_count;
 	else
