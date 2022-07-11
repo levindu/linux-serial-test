@@ -636,7 +636,7 @@ static void setup_serial_port(int baud)
 			rs485.delay_rts_after_send = 0;
 			rs485.delay_rts_before_send = 0;
 			if(ioctl(_fd, TIOCSRS485, &rs485) < 0) {
-				perror("Error setting RS-232 mode");
+				//perror("Error setting RS-232 mode");
 			}
 		}
 	}
@@ -674,8 +674,6 @@ static int compute_error_count(void)
 
 int main(int argc, char * argv[])
 {
-	printf("Linux serial test app\n");
-
 	atexit(&exit_handler);
 
 	process_options(argc, argv);
