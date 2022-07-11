@@ -76,6 +76,11 @@ long long int _write_count = 0;
 long long int _read_count = 0;
 long long int _error_count = 0;
 
+// for stats use
+struct timespec start_time;
+
+static int diff_ms(const struct timespec *t1, const struct timespec *t2);
+
 static void exit_handler(void)
 {
 	if (_fd >= 0) {
@@ -439,9 +444,16 @@ static void process_options(int argc, char * argv[])
 static void dump_serial_port_stats(void)
 {
 	struct serial_icounter_struct icount = { 0 };
+	struct timespec current;
+	int ms_since_beginning;
 
-	printf("%s: count for this session: rx=%lld, tx=%lld, rx err=%lld\n", _cl_port, _read_count, _write_count, _error_count);
+	clock_gettime(CLOCK_MONOTONIC, &current);
+	ms_since_beginning = diff_ms(&current, &start_time);
 
+	printf("%s: rx=%lld (%lld bits/s), tx=%lld (%lld bits/s), rx err=%lld\n", _cl_port,
+		   _read_count, _read_count * 8 * 1000 / ms_since_beginning,
+		   _write_count, _write_count * 8 * 1000 / ms_since_beginning,
+		   _error_count);
 	int ret = ioctl(_fd, TIOCGICOUNT, &icount);
 	if (ret < 0) {
 		perror("Error getting TIOCGICOUNT");
@@ -744,7 +756,7 @@ int main(int argc, char * argv[])
 		serial_poll.events &= ~POLLOUT;
 	}
 
-	struct timespec start_time, last_stat, last_timeout, last_read, last_write;
+	struct timespec last_stat, last_timeout, last_read, last_write;
 
 	clock_gettime(CLOCK_MONOTONIC, &start_time);
 	last_stat = start_time;
