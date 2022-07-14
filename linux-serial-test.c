@@ -485,7 +485,7 @@ static unsigned char next_count_value(unsigned char c)
 
 static void process_read_data(void)
 {
-	unsigned char rb[1024];
+	unsigned char rb[_write_size * 2];
 	int c = read(_fd, &rb, sizeof(rb));
 	if (c > 0) {
 		if (_cl_rx_dump) {
