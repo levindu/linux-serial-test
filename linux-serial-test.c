@@ -239,11 +239,14 @@ static int get_baud(int baud)
 void set_modem_lines(int fd, int bits, int mask)
 {
 	int status, ret;
+	static int warned = 0;
 
 	if (ioctl(fd, TIOCMGET, &status) < 0) {
-		ret = -errno;
-		perror("TIOCMGET failed");
-		exit(ret);
+		if (! warned) {
+			printf("WARNING: TIOCMGET failed\n");
+			warned = 1;
+		}
+		return;
 	}
 
 	status = (status & ~mask) | (bits & mask);
@@ -446,6 +449,7 @@ static void dump_serial_port_stats(void)
 	struct serial_icounter_struct icount = { 0 };
 	struct timespec current;
 	int ms_since_beginning;
+	static int tiocgicount_failed = 0;
 
 	clock_gettime(CLOCK_MONOTONIC, &current);
 	ms_since_beginning = diff_ms(&current, &start_time);
@@ -454,9 +458,15 @@ static void dump_serial_port_stats(void)
 		   _read_count, _read_count * 8 * 1000 / ms_since_beginning,
 		   _write_count, _write_count * 8 * 1000 / ms_since_beginning,
 		   _error_count);
+
+	/* skip ioctl if TIOCGICOUNT was failed previously */
+	if (tiocgicount_failed)
+		return;
+
 	int ret = ioctl(_fd, TIOCGICOUNT, &icount);
 	if (ret < 0) {
 		perror("Error getting TIOCGICOUNT");
+		tiocgicount_failed = 1;
 	} else {
 		printf("%s: TIOCGICOUNT: ret=%i, rx=%i, tx=%i, frame = %i, overrun = %i, parity = %i, brk = %i, buf_overrun = %i\n",
 				_cl_port, ret, icount.rx, icount.tx, icount.frame, icount.overrun, icount.parity, icount.brk,
