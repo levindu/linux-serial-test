@@ -549,13 +549,14 @@ static void process_write_data(void)
 				printf("write failed - errno=%d (%s)\n", errno, strerror(errno));
 			}
 			c = 0;
+		} else {
+			repeat = 0;
 		}
 
 		count += c;
 
 		if (c < actual_write_size) {
 			_write_count_value = _write_data[c];
-			repeat = 0;
 		}
 	} while (repeat);
 
