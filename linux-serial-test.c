@@ -483,7 +483,7 @@ static unsigned char next_count_value(unsigned char c)
 	return c;
 }
 
-static void process_read_data(void)
+static int process_read_data(void)
 {
 	unsigned char rb[_write_size * 2];
 	int c = read(_fd, &rb, sizeof(rb));
@@ -514,9 +514,10 @@ static void process_read_data(void)
 		}
 		_read_count += c;
 	}
+	return c;
 }
 
-static void process_write_data(void)
+static int process_write_data(void)
 {
 	ssize_t count = 0;
 	ssize_t actual_write_size = 0;
@@ -564,6 +565,7 @@ static void process_write_data(void)
 
 	if (_cl_tx_detailed)
 		printf("wrote %zd bytes\n", count);
+	return (int)count;
 }
 
 
