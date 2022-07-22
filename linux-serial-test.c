@@ -478,7 +478,7 @@ static void dump_serial_port_stats(void)
 static unsigned char next_count_value(unsigned char c)
 {
 	c++;
-	if (_cl_ascii_range && c == 127)
+	if (_cl_ascii_range && c >= 127)
 		c = 32;
 	return c;
 }
