@@ -466,8 +466,8 @@ static void dump_serial_port_stats(void)
 
 	clock_gettime(CLOCK_MONOTONIC, &current);
 	ms_since_beginning = diff_ms(&current, &start_time);
-
-	printf("%s: t=%llds, rx=%lld (%lld bits/s), tx=%lld (%lld bits/s), rx err=%lld\n",
+	printf("%s%s: t=%llds, rx=%lld (%lld bits/s), tx=%lld (%lld bits/s), rx err=%lld\n",
+		_cl_rx_dump ? "\n" : "",
 		_cl_port, ms_since_beginning / 1000,
 		_read_count, _read_count * 8 * 1000 / ms_since_beginning,
 		_write_count, _write_count * 8 * 1000 / ms_since_beginning,
