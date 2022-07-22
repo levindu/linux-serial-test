@@ -789,11 +789,11 @@ int main(int argc, char * argv[])
 					// since the last read
 					if (diff_ms(&current, &last_read) > _cl_rx_delay) {
 						process_read_data();
-						last_read = current;
+						clock_gettime(CLOCK_MONOTONIC, &last_read);
 					}
 				} else {
 					process_read_data();
-					last_read = current;
+					clock_gettime(CLOCK_MONOTONIC, &last_read);
 				}
 			}
 
@@ -803,11 +803,11 @@ int main(int argc, char * argv[])
 					// since the last write
 					if (diff_ms(&current, &last_write) > _cl_tx_delay) {
 						process_write_data();
-						last_write = current;
+						clock_gettime(CLOCK_MONOTONIC, &last_write);
 					}
 				} else {
 					process_write_data();
-					last_write = current;
+					clock_gettime(CLOCK_MONOTONIC, &last_write);
 				}
 			}
 		}
