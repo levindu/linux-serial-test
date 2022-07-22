@@ -66,6 +66,7 @@ int _cl_tx_time = 0;
 int _cl_rx_time = 0;
 int _cl_ascii_range = 0;
 int _cl_write_after_read = 0;
+int _cl_rx_timeout = 0;
 
 // Module variables
 unsigned char _write_count_value = 0;
@@ -296,6 +297,7 @@ static void display_help(void)
 			"  -o, --tx-time      Number of seconds to transmit for (defaults to 0, meaning no limit)\n"
 			"  -i, --rx-time      Number of seconds to receive for (defaults to 0, meaning no limit)\n"
 			"  -A, --ascii        Output bytes range from 32 to 126 (default is 0 to 255)\n"
+			"  -x, --rx-timeout   Read timeout (ms) before write\n"
 			"\n"
 	      );
 }
@@ -304,7 +306,7 @@ static void process_options(int argc, char * argv[])
 {
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "hb:p:d:R:TsSy:z:cBertq:Ql:a:w:o:i:P:kKA";
+		static const char *short_options = "hb:p:d:R:TsSy:z:cBertq:Ql:a:w:o:i:P:kKAx:";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"baud", required_argument, 0, 'b'},
@@ -332,6 +334,7 @@ static void process_options(int argc, char * argv[])
 			{"tx-time", required_argument, 0, 'o'},
 			{"rx-time", required_argument, 0, 'i'},
 			{"ascii", no_argument, 0, 'A'},
+			{"rx-timeout", required_argument, 0, 'x'},
 			{0,0,0,0},
 		};
 
@@ -443,6 +446,11 @@ static void process_options(int argc, char * argv[])
 		case 'A':
 			_cl_ascii_range = 1;
 			break;
+		case 'x': {
+			char *endptr;
+			_cl_rx_timeout = strtol(optarg, &endptr, 0);
+			break;
+		}
 		}
 	}
 }
@@ -705,6 +713,10 @@ int main(int argc, char * argv[])
 		display_help();
 		exit(-EINVAL);
 	}
+	if (_cl_rx_timeout > 0 && _cl_tx_delay <= 0) {
+		fprintf(stderr, "ERROR: --tx-delay needed for --rx-timeout\n");
+		exit(-EINVAL);
+	}
 
 	int baud = B115200;
 
@@ -792,7 +804,14 @@ int main(int argc, char * argv[])
 			perror("poll()");
 		} else if (retval) {
 			if (serial_poll.revents & POLLIN) {
-				if (_cl_rx_delay) {
+				if (_cl_rx_timeout) {
+					if (process_read_data() > 0) {
+						clock_gettime(CLOCK_MONOTONIC, &last_read);
+					}
+					// must keep reading until timeout
+					continue;
+				}
+				else if (_cl_rx_delay) {
 					// only read if it has been rx-delay ms
 					// since the last read
 					if (diff_ms(&current, &last_read) > _cl_rx_delay) {
@@ -803,7 +822,13 @@ int main(int argc, char * argv[])
 					process_read_data();
 					clock_gettime(CLOCK_MONOTONIC, &last_read);
 				}
-			}
+			} else {
+				// not readable, check timeout
+				if (_cl_rx_timeout && \
+					diff_ms(&current, &last_read) < _cl_rx_timeout) {
+					continue;
+				}
+            }
 
 			if (serial_poll.revents & POLLOUT) {
 				if (_cl_tx_delay) {
