@@ -21,6 +21,11 @@
 //#define SHOW_TIOCGICOUNT
 #define DUMP_STAT_INTERVAL_SECONDS 2
 
+#define ERROR_COLOR "\e[1m\e[31m" // bold red
+#define INFO_COLOR "\e[32m" // green
+#define RESET_COLOR "\e[0m"
+#define NULL_COLOR ""
+
 /*
  * glibc for MIPS has its own bits/termios.h which does not define
  * CMSPAR, so we vampirise the value from the generic bits/termios.h
@@ -67,6 +72,7 @@ int _cl_rx_time = 0;
 int _cl_ascii_range = 0;
 int _cl_write_after_read = 0;
 int _cl_rx_timeout = 0;
+int _cl_color_output = 0;
 
 // Module variables
 unsigned char _write_count_value = 0;
@@ -298,6 +304,7 @@ static void display_help(void)
 			"  -i, --rx-time      Number of seconds to receive for (defaults to 0, meaning no limit)\n"
 			"  -A, --ascii        Output bytes range from 32 to 126 (default is 0 to 255)\n"
 			"  -x, --rx-timeout   Read timeout (ms) before write\n"
+			"  -C, --color        Color output\n"
 			"\n"
 	      );
 }
@@ -306,7 +313,7 @@ static void process_options(int argc, char * argv[])
 {
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "hb:p:d:R:TsSy:z:cBertq:Ql:a:w:o:i:P:kKAx:";
+		static const char *short_options = "hb:p:d:R:TsSy:z:cBertq:Ql:a:w:o:i:P:kKAx:C";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"baud", required_argument, 0, 'b'},
@@ -335,6 +342,7 @@ static void process_options(int argc, char * argv[])
 			{"rx-time", required_argument, 0, 'i'},
 			{"ascii", no_argument, 0, 'A'},
 			{"rx-timeout", required_argument, 0, 'x'},
+			{"color", required_argument, 0, 'C'},
 			{0,0,0,0},
 		};
 
@@ -451,6 +459,9 @@ static void process_options(int argc, char * argv[])
 			_cl_rx_timeout = strtol(optarg, &endptr, 0);
 			break;
 		}
+		case 'C':
+			_cl_color_output = 1;
+			break;
 		}
 	}
 }
@@ -466,12 +477,16 @@ static void dump_serial_port_stats(void)
 
 	clock_gettime(CLOCK_MONOTONIC, &current);
 	ms_since_beginning = diff_ms(&current, &start_time);
-	printf("%s%s: t=%llds, rx=%lld (%lld bits/s), tx=%lld (%lld bits/s), rx err=%lld\n",
+	printf("%s%s%s: t=%ds, rx=%lld (%lld bits/s), tx=%lld (%lld bits/s), rx err=%s%lld%s\n",
+		_cl_color_output ? INFO_COLOR : NULL_COLOR,
 		_cl_rx_dump ? "\n" : "",
 		_cl_port, ms_since_beginning / 1000,
 		_read_count, _read_count * 8 * 1000 / ms_since_beginning,
 		_write_count, _write_count * 8 * 1000 / ms_since_beginning,
-		_error_count);
+		_cl_color_output && _error_count > 0 ? ERROR_COLOR : NULL_COLOR,
+		_error_count,
+		_cl_color_output ? RESET_COLOR : NULL_COLOR);
+
 #if SHOW_TIOCGICOUNT
 	/* skip ioctl if TIOCGICOUNT was failed previously */
 	if (tiocgicount_failed)
@@ -516,8 +531,10 @@ static int process_read_data(void)
 					_read_count_value = rb[i];
 			} else if (rb[i] != _read_count_value) {
 				if (_cl_dump_err) {
-					printf("Error, count: %lld, expected %02x, got %02x\n",
-							_read_count + i, _read_count_value, rb[i]);
+					printf("%sError, count: %lld, expected %02x, got %02x%s\n",
+							_cl_color_output ? ERROR_COLOR : NULL_COLOR,
+							_read_count + i, _read_count_value, rb[i],
+							_cl_color_output ? RESET_COLOR : NULL_COLOR);
 				}
 				_error_count++;
 				if (_cl_stop_on_error) {
