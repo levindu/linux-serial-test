@@ -579,7 +579,7 @@ static int process_write_data(void)
 
 	_write_count += count;
 
-	if (_cl_tx_detailed)
+	if (_cl_tx_detailed && count > 0)
 		printf("wrote %zd bytes\n", count);
 	return (int)count;
 }
