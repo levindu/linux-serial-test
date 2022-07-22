@@ -512,7 +512,9 @@ static int process_read_data(void)
 		// verify read count is incrementing
 		int i;
 		for (i = 0; i < c; i++) {
-			if (rb[i] != _read_count_value) {
+			if (_read_count == 0 && i==0) {
+					_read_count_value = rb[i];
+			} else if (rb[i] != _read_count_value) {
 				if (_cl_dump_err) {
 					printf("Error, count: %lld, expected %02x, got %02x\n",
 							_read_count + i, _read_count_value, rb[i]);
