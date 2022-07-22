@@ -18,6 +18,9 @@
 #include <errno.h>
 #include <sys/file.h>
 
+//#define SHOW_TIOCGICOUNT
+#define DUMP_STAT_INTERVAL_SECONDS 2
+
 /*
  * glibc for MIPS has its own bits/termios.h which does not define
  * CMSPAR, so we vampirise the value from the generic bits/termios.h
@@ -449,7 +452,9 @@ static void dump_serial_port_stats(void)
 	struct serial_icounter_struct icount = { 0 };
 	struct timespec current;
 	int ms_since_beginning;
+#if SHOW_TIOCGICOUNT
 	static int tiocgicount_failed = 0;
+#endif
 
 	clock_gettime(CLOCK_MONOTONIC, &current);
 	ms_since_beginning = diff_ms(&current, &start_time);
@@ -459,7 +464,7 @@ static void dump_serial_port_stats(void)
 		_read_count, _read_count * 8 * 1000 / ms_since_beginning,
 		_write_count, _write_count * 8 * 1000 / ms_since_beginning,
 		_error_count);
-
+#if SHOW_TIOCGICOUNT
 	/* skip ioctl if TIOCGICOUNT was failed previously */
 	if (tiocgicount_failed)
 		return;
@@ -473,6 +478,7 @@ static void dump_serial_port_stats(void)
 				_cl_port, ret, icount.rx, icount.tx, icount.frame, icount.overrun, icount.parity, icount.brk,
 				icount.buf_overrun);
 	}
+#endif
 }
 
 static unsigned char next_count_value(unsigned char c)
@@ -848,7 +854,7 @@ int main(int argc, char * argv[])
 		}
 
 		if (_cl_stats) {
-			if (current.tv_sec - last_stat.tv_sec > 5) {
+			if (current.tv_sec - last_stat.tv_sec > DUMP_STAT_INTERVAL_SECONDS) {
 				dump_serial_port_stats();
 				last_stat = current;
 			}
